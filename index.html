@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Metro Rail Incidents</title>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js" charset="utf-8"></script>
+<link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.css" />
+<script src="data/leaflet.js"></script>
+</head>
+
+<body>
+	<div id="map" style="width:960px;height:500px;">
+
+	</div>
+	<script type="text/javascript">
+		// width, height
+		var w = 1000;
+		var h = 1000;
+
+		// define map projection
+		// var scale = 1;
+		// var offset = [w/2, h/2];
+		// var projection = d3.geo.mercator().scale(scale).translate(offset);
+
+		// define path generator
+		//var path = d3.geo.path().projection(projection);
+
+		// create svg element
+		//var svg = d3.select('body').append('svg').attr('width', w).attr('height', h);
+
+		// Leaflet map
+		// Create a new map
+		var map = L.map('map', {center: [38.9255, -77.0176], zoom: 12});
+		L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+		// Add a Leaflet overlay pane
+		var svg = d3.select(map.getPanes().overlayPane).append("svg");
+		var g = svg.append("g").attr("class", "leaflet-zoom-hide");
+
+		// load the station map
+		d3.json('data/stations.json', function(error, stations) {
+			// Create a d3.geo.path to convert GeoJSON to SVG
+			var transform = d3.geo.transform({point: projectPoint});
+			var path = d3.geo.path().projection(transform);
+
+			// Create path elements for each of the features
+			var feature = g.selectAll('path')
+				.data(stations.features)
+				.enter().append('path').style("fill", "#6854b0");				
+
+			map.on("viewreset", reset);
+			reset();
+
+			// Reposition the SVG to cover the features
+			function reset() {
+				var bounds = path.bounds(stations),
+					topLeft = bounds[0],
+					bottomRight = bounds[1];
+
+			    svg.attr("width", bottomRight[0] - topLeft[0])
+			       .attr("height", bottomRight[1] - topLeft[1])
+			       .style("left", topLeft[0] + "px")
+			       .style("top", topLeft[1] + "px");
+
+			    g.attr("transform", "translate(" + -topLeft[0] + "," + -topLeft[1] + ")");
+
+				// Initialize the path data by setting the d attribute
+				feature.attr('d', path);
+			}
+
+			// Create a simple function that projects individual points
+			function projectPoint(x ,y) {
+				var point = map.latLngToLayerPoint(new L.LatLng(y, x));
+				this.stream.point(point.x, point.y);
+			}
+		});
+
+
+		// load the metro incident JSON data via AJAX
+		$(function() {
+			var apiParams = {
+				// Subscription key
+				'api_key': 'c59d825130c044a5a6231022d2d083ef'
+			};
+			
+			$.ajax({
+				url: 'https://api.wmata.com/Incidents.svc/json/Incidents?' + $.param(apiParams),
+				type: 'GET'
+			})
+			.done(function(Incidents) {
+				cleanData(Incidents);
+			})
+			.fail(function() {
+				$('#graphs').text('I\'m sorry, but the data cannot be loaded at this time.');
+			});
+		});
+
+
+		var incidentData = {};
+
+		// clean the data returned from the API
+		function cleanData(Incidents) {
+			for (var item in Incidents) {
+				var incident = Incidents[item];
+				console.log(incident);
+
+				// get the details for each incident
+				for (var detail in incident) {
+					// organized by date updated
+					var dateUpdated = incident[detail].DateUpdated;
+					incidentData[dateUpdated] = {};
+
+					var severity = incident[detail].DelaySeverity;
+					var incidentType = incident[detail].IncidentType;
+					var description = incident[detail].Description;
+					var linesAffected = incident[detail].LinesAffected;
+
+					if (severity !== null) {
+						incidentData[dateUpdated].severity = severity;
+					}
+
+					if (incidentType !== null) {
+						incidentData[dateUpdated].incidentType = incidentType;
+					}
+
+					if (description !== null && description !== '') {
+						incidentData[dateUpdated].description = description;
+					}
+
+					if (linesAffected !== null) {
+						linesAffected = linesAffected.split(/;[\s]?/).filter(function(fn) {return fn !== '';})
+						incidentData[dateUpdated].linesAffected = linesAffected;
+					}
+				}
+			}
+		};
+	</script>
+</body>
+
+</html>
