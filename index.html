@@ -10,7 +10,7 @@
 </head>
 
 <body>
-	<div id="map" style="width:960px;height:500px;">
+	<div id="map" style="width:1000px;height:1000px;">
 
 	</div>
 	<script type="text/javascript">
@@ -27,7 +27,7 @@
 		d3.json('data/stations.json', function(error, stations) {
 			// Create a d3.geo.path to convert GeoJSON to SVG
 			var transform = d3.geo.transform({point: projectPoint});
-			var path = d3.geo.path().projection(transform);
+			var path = d3.geo.path().projection(transform).pointRadius(10);
 
 			// Create path elements for each of the features
 			var feature = g.selectAll('path')
