@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
-<title>Metro Rail Incidents</title>
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js" charset="utf-8"></script>
-<link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.css" />
-<script src="data/leaflet.js"></script>
+	<meta charset="UTF-8">
+	<title>Metro Rail Incidents</title>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js" charset="utf-8"></script>
+	<link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.css" />
+	<script src="data/leaflet.js"></script>
 </head>
 
 <body>
@@ -31,8 +31,22 @@
 
 			// Create path elements for each of the features
 			var feature = g.selectAll('path')
-				.data(stations.features)
-				.enter().append('path').style("fill", "#6854b0");				
+			.data(stations.features)
+			.enter().append('path').attr('class', function(d) {
+				return d.properties.lines;
+			}).style('fill', function(d) {
+				// Return the line color 
+				if (d.properties.lines.length == 1) {
+					return d.properties.lines;
+				} else {
+					// If a station is on more than one line, only return the first for now
+					// NEED TO FIGURE OUT HOW TO HANDLE STATIONS ON MULTIPLE LINES
+
+					return d.properties.lines[0];
+				}
+			}).style('stroke', function(d) {
+				return d.properties.lines[0];
+			}).style('stroke-width', 1);			
 
 			map.on("viewreset", reset);
 			reset();
@@ -40,15 +54,15 @@
 			// Reposition the SVG to cover the features
 			function reset() {
 				var bounds = path.bounds(stations),
-					topLeft = bounds[0],
-					bottomRight = bounds[1];
+				topLeft = bounds[0],
+				bottomRight = bounds[1];
 
-			    svg.attr("width", bottomRight[0] - topLeft[0])
-			       .attr("height", bottomRight[1] - topLeft[1])
-			       .style("left", topLeft[0] + "px")
-			       .style("top", topLeft[1] + "px");
+				svg.attr("width", bottomRight[0] - topLeft[0])
+				.attr("height", bottomRight[1] - topLeft[1])
+				.style("left", topLeft[0] + "px")
+				.style("top", topLeft[1] + "px");
 
-			    g.attr("transform", "translate(" + -topLeft[0] + "," + -topLeft[1] + ")");
+				g.attr("transform", "translate(" + -topLeft[0] + "," + -topLeft[1] + ")");
 
 				// Initialize the path data by setting the d attribute
 				feature.attr('d', path);
@@ -59,7 +73,6 @@
 				var point = map.latLngToLayerPoint(new L.LatLng(y, x));
 				this.stream.point(point.x, point.y);
 			}
-		});
 
 
 		// load the metro incident JSON data via AJAX
@@ -88,7 +101,7 @@
 		function cleanData(Incidents) {
 			for (var item in Incidents) {
 				var incident = Incidents[item];
-				console.log(incident);
+				//console.log(incident);
 
 				// get the details for each incident
 				for (var detail in incident) {
@@ -96,14 +109,9 @@
 					var dateUpdated = incident[detail].DateUpdated;
 					incidentData[dateUpdated] = {};
 
-					var severity = incident[detail].DelaySeverity;
 					var incidentType = incident[detail].IncidentType;
 					var description = incident[detail].Description;
 					var linesAffected = incident[detail].LinesAffected;
-
-					if (severity !== null) {
-						incidentData[dateUpdated].severity = severity;
-					}
 
 					if (incidentType !== null) {
 						incidentData[dateUpdated].incidentType = incidentType;
@@ -114,13 +122,53 @@
 					}
 
 					if (linesAffected !== null) {
-						linesAffected = linesAffected.split(/;[\s]?/).filter(function(fn) {return fn !== '';})
-						incidentData[dateUpdated].linesAffected = linesAffected;
+						linesAffected = linesAffected.split(/;[\s]?/).filter(function(fn) {return fn !== '';});
+
+						// Create an array within the incidentData object to store the linesAffected
+						incidentData[dateUpdated].linesAffected = [];
+
+						// Store the line abbreviations so that they match the station data
+						for (var i = 0; i < linesAffected.length; i++) {
+							switch (linesAffected[i]) {
+								case 'RD':
+									incidentData[dateUpdated].linesAffected.push('Red');
+									break;
+								case 'GR':
+									incidentData[dateUpdated].linesAffected.push('Green');
+									break;
+								case 'BL':
+									incidentData[dateUpdated].linesAffected.push('Blue');
+									break;
+								case 'OR':
+									incidentData[dateUpdated].linesAffected.push('Orange');
+									break;
+								case 'SV':
+									incidentData[dateUpdated].linesAffected.push('Silver');
+									break;
+								case 'YL':
+									incidentData[dateUpdated].linesAffected.push('Yellow');
+							}
+						}
+
+						// For each station on a line with an incident, pulse the station markers
+						// NEED TO FIGURE OUT WHY THE TRANSITION IS SO ABRUPT
+						var pulseTimerFadeOut = setInterval(fadeStationsOut, 2000);
+						function fadeStationsOut() {
+							g.selectAll('path.' + incidentData[dateUpdated].linesAffected).transition()
+								.style('fill', 'transparent').duration(1000);
+						}
+
+						function fadeStationsIn() {
+							g.selectAll('path.' + incidentData[dateUpdated].linesAffected).transition()
+							.style('fill', incidentData[dateUpdated].linesAffected).duration(1000);
+						}
+						var pulseTimerFadeIn = setInterval(fadeStationsIn, 3000);
 					}
 				}
 			}
 		};
-	</script>
+	});
+</script>
 </body>
 
 </html>
