@@ -17,7 +17,9 @@
 		// Leaflet map
 		// Create a new map
 		var map = L.map('map', {center: [38.9255, -77.0176], zoom: 12});
-		L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+		//L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+		L.tileLayer('http://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png', {
+			attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="http://cartodb.com/attributions">CartoDB</a>'}).addTo(map);
 
 		// Add a Leaflet overlay pane
 		var svg = d3.select(map.getPanes().overlayPane).append("svg");
