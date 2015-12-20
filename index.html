@@ -2,28 +2,47 @@
 <html>
 <head>
 	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 	<title>Metro Rail Incidents</title>
 	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js" charset="utf-8"></script>
+	<style>
+		body {
+			padding: 0;
+			margin: 0;
+		}
+		#map {
+			width:100%;
+			height: 1000px;
+		}
+	</style>
 	<link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.css" />
-	<script src="data/leaflet.js"></script>
+	<link rel="stylesheet" href="http://libs.cartocdn.com/cartodb.js/v3/themes/css/cartodb.css" />
+	<script src="http://libs.cartocdn.com/cartodb.js/v3/cartodb.js"></script>
 </head>
 
-<body>
-	<div id="map" style="width:1000px;height:1000px;">
+<body onload="init();">
+	<div id="map">
 
 	</div>
 	<script type="text/javascript">
 		// Leaflet map
 		// Create a new map
-		var map = L.map('map', {center: [38.9255, -77.0176], zoom: 12});
-		//L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-		L.tileLayer('http://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png', {
-			attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="http://cartodb.com/attributions">CartoDB</a>'}).addTo(map);
+		var map;
+		function init() {
+			// Initiate Leaflet map
+			map = new L.Map('map', {
+				center: [38.9255, -77.0176],
+				zoom: 12
+			})
 
-		// Add a Leaflet overlay pane
-		var svg = d3.select(map.getPanes().overlayPane).append("svg");
-		var g = svg.append("g").attr("class", "leaflet-zoom-hide");
+			L.tileLayer('http://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png', {
+				attribution: 'Mapbox <a href="http://mapbox.com/about/maps" target="_blank">Terms &amp; Feedback</a>'
+			}).addTo(map);
+
+		    // Add a Leaflet overlay pane
+		    var svg = d3.select(map.getPanes().overlayPane).append("svg");
+		    var g = svg.append("g").attr("class", "leaflet-zoom-hide");
 
 		// load the station map
 		d3.json('data/stations.json', function(error, stations) {
@@ -37,18 +56,29 @@
 			.enter().append('path').attr('class', function(d) {
 				return d.properties.lines;
 			}).style('fill', function(d) {
-				// Return the line color 
-				if (d.properties.lines.length == 1) {
-					return d.properties.lines;
-				} else {
-					// If a station is on more than one line, only return the first for now
-					// NEED TO FIGURE OUT HOW TO HANDLE STATIONS ON MULTIPLE LINES
-
+					// Return the line color 
+					if (d.properties.lines.length == 1) {
+						return d.properties.lines;
+					} else {
+						// If a station is on more than one line, only return the first for now
+						// NEED TO FIGURE OUT HOW TO HANDLE STATIONS ON MULTIPLE LINES
+						return d.properties.lines[0];
+					}
+				}).style('stroke', function(d) {
 					return d.properties.lines[0];
-				}
-			}).style('stroke', function(d) {
-				return d.properties.lines[0];
-			}).style('stroke-width', 1);			
+				}).style('stroke-width', 1);
+
+			// Place station labels on the map
+			g.selectAll('.place-label')
+			.data(stations.features)
+			.enter().append('text')
+			.attr('class', 'place-label')
+			.attr('transform', function(d) {return 'translate(' + path + ')';})
+			.attr('dy', '.35em')
+			.text(function(d) {return d.properties.title});	
+			g.selectAll('.place-label')
+			.attr('x', function(d) {return d.geometry.coordinates[0] > -76 ? -76 : -6;})
+			.style('text-anchor', function(d) {return d.geometry.coordinates[0] > -76 ? 'start' : 'end';});
 
 			map.on("viewreset", reset);
 			reset();
@@ -76,7 +106,6 @@
 				this.stream.point(point.x, point.y);
 			}
 
-
 		// load the metro incident JSON data via AJAX
 		$(function() {
 			var apiParams = {
@@ -103,73 +132,60 @@
 		function cleanData(Incidents) {
 			for (var item in Incidents) {
 				var incident = Incidents[item];
-				//console.log(incident);
+				console.log(incident);
 
 				// get the details for each incident
 				for (var detail in incident) {
-					// organized by date updated
-					var dateUpdated = incident[detail].DateUpdated;
-					incidentData[dateUpdated] = {};
-
-					var incidentType = incident[detail].IncidentType;
-					var description = incident[detail].Description;
 					var linesAffected = incident[detail].LinesAffected;
-
-					if (incidentType !== null) {
-						incidentData[dateUpdated].incidentType = incidentType;
-					}
-
-					if (description !== null && description !== '') {
-						incidentData[dateUpdated].description = description;
-					}
 
 					if (linesAffected !== null) {
 						linesAffected = linesAffected.split(/;[\s]?/).filter(function(fn) {return fn !== '';});
 
 						// Create an array within the incidentData object to store the linesAffected
-						incidentData[dateUpdated].linesAffected = [];
+						incidentData.linesAffected = [];
 
 						// Store the line abbreviations so that they match the station data
 						for (var i = 0; i < linesAffected.length; i++) {
 							switch (linesAffected[i]) {
 								case 'RD':
-									incidentData[dateUpdated].linesAffected.push('Red');
-									break;
+								incidentData.linesAffected.push('Red');
+								break;
 								case 'GR':
-									incidentData[dateUpdated].linesAffected.push('Green');
-									break;
+								incidentData.linesAffected.push('Green');
+								break;
 								case 'BL':
-									incidentData[dateUpdated].linesAffected.push('Blue');
-									break;
+								incidentData.linesAffected.push('Blue');
+								break;
 								case 'OR':
-									incidentData[dateUpdated].linesAffected.push('Orange');
-									break;
+								incidentData.linesAffected.push('Orange');
+								break;
 								case 'SV':
-									incidentData[dateUpdated].linesAffected.push('Silver');
-									break;
+								incidentData.linesAffected.push('Silver');
+								break;
 								case 'YL':
-									incidentData[dateUpdated].linesAffected.push('Yellow');
+								incidentData.linesAffected.push('Yellow');
 							}
 						}
 
 						// For each station on a line with an incident, pulse the station markers
 						// NEED TO FIGURE OUT WHY THE TRANSITION IS SO ABRUPT
-						var pulseTimerFadeOut = setInterval(fadeStationsOut, 2000);
-						function fadeStationsOut() {
-							g.selectAll('path.' + incidentData[dateUpdated].linesAffected).transition()
-								.style('fill', 'transparent').duration(1000);
-						}
+						// var pulseTimerFadeOut = setInterval(fadeStationsOut, 2000);
+						// function fadeStationsOut() {
+						// 	g.selectAll('path.' + incidentData.linesAffected).transition()
+						// 		.style('fill', 'transparent').duration(1000);
+						// }
 
-						function fadeStationsIn() {
-							g.selectAll('path.' + incidentData[dateUpdated].linesAffected).transition()
-							.style('fill', incidentData[dateUpdated].linesAffected).duration(1000);
-						}
-						var pulseTimerFadeIn = setInterval(fadeStationsIn, 3000);
+						// function fadeStationsIn() {
+						// 	g.selectAll('path.' + incidentData.linesAffected).transition()
+						// 	.style('fill', incidentData.linesAffected).duration(1000);
+						// }
+						// var pulseTimerFadeIn = setInterval(fadeStationsIn, 3000);
 					}
 				}
 			}
 		};
 	});
+};
 </script>
 </body>
 
