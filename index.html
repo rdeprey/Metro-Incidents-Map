@@ -4,8 +4,6 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 	<title>Metro Rail Incidents</title>
-	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
-	<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js" charset="utf-8"></script>
 	<style>
 		body {
 			padding: 0;
@@ -19,6 +17,9 @@
 	<link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.css" />
 	<link rel="stylesheet" href="http://libs.cartocdn.com/cartodb.js/v3/themes/css/cartodb.css" />
 	<script src="http://libs.cartocdn.com/cartodb.js/v3/cartodb.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js" charset="utf-8"></script>
+	<script src="private/api-keys.js"></script>
 </head>
 
 <body onload="init();">
@@ -88,6 +89,7 @@
 				var bounds = path.bounds(stations),
 				topLeft = bounds[0],
 				bottomRight = bounds[1];
+				console.log(bounds);
 
 				svg.attr("width", bottomRight[0] - topLeft[0])
 				.attr("height", bottomRight[1] - topLeft[1])
@@ -110,7 +112,7 @@
 		$(function() {
 			var apiParams = {
 				// Subscription key
-				'api_key': 'c59d825130c044a5a6231022d2d083ef'
+				'api_key': metroApiKey
 			};
 			
 			$.ajax({
